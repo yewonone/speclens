@@ -77,7 +77,9 @@ const SCREENS = ['config-screen', 'home-screen', 'module-screen'];
 
 function showScreen(id) {
   SCREENS.forEach(sid => {
-    document.getElementById(sid).style.display = sid === id ? 'block' : 'none';
+    const el = document.getElementById(sid);
+    if (sid !== id) { el.style.display = 'none'; return; }
+    el.style.display = sid === 'config-screen' ? 'flex' : 'block';
   });
 }
 
