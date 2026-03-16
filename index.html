@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SpecLens</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ══════════════════════════════════════════════════
+       설정 화면 (최초 1회)
+  ══════════════════════════════════════════════════ -->
+  <div id="config-screen" class="screen">
+    <div class="config-card">
+      <div class="config-logo">SpecLens</div>
+      <div class="config-tagline">쉽고 편리하게 요구사항 검토를 도와드려요</div>
+
+      <h2>시작하기 전에 설정이 필요해요</h2>
+      <p>
+        Google Apps Script 웹 앱 URL을 입력해주세요.<br />
+        한 번만 입력하면 다음부터는 자동으로 연결돼요.
+      </p>
+
+      <div class="form-group">
+        <label class="form-label" for="input-script-url">
+          Apps Script URL <span class="required">*</span>
+        </label>
+        <input
+          id="input-script-url"
+          class="form-input"
+          type="url"
+          placeholder="https://script.google.com/macros/s/..."
+          onkeydown="if(event.key==='Enter') handleConfigSubmit()"
+        />
+        <div id="config-error" style="color:var(--danger);font-size:.8rem;margin-top:4px"></div>
+      </div>
+
+      <button class="btn btn-primary btn-lg" style="width:100%" onclick="handleConfigSubmit()">
+        연결하고 시작하기 →
+      </button>
+
+      <p style="font-size:.75rem;color:var(--text-muted);margin-top:16px;line-height:1.6">
+        URL 설정 방법은 <strong>SETUP.md</strong> 파일을 참고해주세요.
+      </p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+       홈 화면 — 모듈 선택
+  ══════════════════════════════════════════════════ -->
+  <div id="home-screen" class="screen" style="display:none">
+    <div class="app-header">
+      <div class="container">
+        <div class="header-inner">
+          <div class="logo" onclick="loadHome()">
+            SpecLens
+            <span>쉽고 편리하게 요구사항 검토를 도와드려요</span>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="resetConfig()">⚙️ 설정</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="home-screen-body">
+      <div class="container">
+        <div class="home-hero">
+          <h1>어떤 모듈을 검토할까요?</h1>
+          <p>모듈을 선택하면 해당 모듈의 요구사항을 우선순위 순으로 보여드려요.</p>
+          <div id="home-stats" class="home-stats"></div>
+        </div>
+        <div id="module-grid" class="module-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+       모듈 화면 — 요구사항 목록
+  ══════════════════════════════════════════════════ -->
+  <div id="module-screen" class="screen" style="display:none">
+    <div class="app-header">
+      <div class="container">
+        <div class="header-inner">
+          <div class="logo" onclick="goHome()" style="cursor:pointer">
+            ← SpecLens
+          </div>
+          <div id="module-stats" class="module-stats"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 모듈 툴바 -->
+    <div class="module-toolbar">
+      <div class="container">
+        <div class="module-toolbar-inner">
+          <div class="module-title-area">
+            <span id="module-screen-title" class="module-title"></span>
+          </div>
+          <div class="toolbar-actions">
+            <button class="btn btn-secondary" onclick="openAnalysisModal('duplicate')">
+              🔍 비슷한 요건 찾기
+            </button>
+            <button class="btn btn-secondary" onclick="openAnalysisModal('conflict')">
+              ⚡ 충돌 요건 찾기
+            </button>
+            <button id="btn-save" class="btn btn-primary" onclick="saveRequirements()">
+              💾 변경사항 저장
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 요구사항 목록 -->
+    <div class="req-list-wrap">
+      <div class="container">
+        <div class="req-list-header">
+          <div style="font-size:.875rem;color:var(--text-sub)">
+            요구사항을 추가·수정·삭제한 뒤 저장하세요.
+          </div>
+          <button class="btn btn-primary" onclick="openEditModal()">
+            + 요구사항 추가
+          </button>
+        </div>
+
+        <table class="req-table">
+          <thead>
+            <tr>
+              <th style="text-align:center">우선순위</th>
+              <th>요구사항명 / 설명</th>
+              <th>유형</th>
+              <th>영역</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="req-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+       모달 오버레이
+  ══════════════════════════════════════════════════ -->
+  <div id="modal-overlay" class="modal-overlay" onclick="handleOverlayClick(event)">
+
+    <!-- 수정/추가 모달 -->
+    <div id="edit-modal" class="modal" style="display:none">
+      <div class="modal-header">
+        <div>
+          <div id="edit-modal-title" class="modal-title">요구사항 추가</div>
+          <div class="modal-subtitle">필수 항목(*)을 채워주세요.</div>
+        </div>
+        <button class="modal-close" onclick="closeEditModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="edit-error" style="color:var(--danger);font-size:.8rem;margin-bottom:8px"></div>
+
+        <div class="form-group">
+          <label class="form-label" for="edit-name">요구사항명 <span class="required">*</span></label>
+          <input id="edit-name" class="form-input" type="text" placeholder="예: 이메일 로그인 기능 제공" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="edit-desc">설명</label>
+          <textarea id="edit-desc" class="form-textarea" placeholder="요구사항에 대한 상세 설명을 입력해주세요."></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="edit-priority">우선순위 <span class="required">*</span></label>
+            <select id="edit-priority" class="form-select">
+              <option value="P1">P1 — 반드시 필요</option>
+              <option value="P2" selected>P2 — 중요하나 차순위</option>
+              <option value="P3">P3 — 있으면 좋음</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="edit-type">유형</label>
+            <select id="edit-type" class="form-select">
+              <option value="기능">기능</option>
+              <option value="비기능">비기능</option>
+              <option value="UX/UI">UX/UI</option>
+              <option value="데이터">데이터</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="edit-area">영역</label>
+          <select id="edit-area" class="form-select">
+            <option value="">선택 안 함</option>
+            <option value="FO">FO (프론트 오피스)</option>
+            <option value="BO">BO (백 오피스)</option>
+            <option value="FO/BO">FO/BO</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">연관 채널</label>
+          <div class="checkbox-group">
+            <label class="checkbox-label"><input type="checkbox" id="edit-ch-world" /> T 월드</label>
+            <label class="checkbox-label"><input type="checkbox" id="edit-ch-direct" /> T 다이렉트</label>
+            <label class="checkbox-label"><input type="checkbox" id="edit-ch-space" /> T 우주</label>
+            <label class="checkbox-label"><input type="checkbox" id="edit-ch-members" /> T 멤버십</label>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="edit-source">출처</label>
+            <input id="edit-source" class="form-input" type="text" placeholder="예: 초기 분석" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="edit-author">작성자</label>
+            <input id="edit-author" class="form-input" type="text" placeholder="예: 홍길동" />
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeEditModal()">취소</button>
+        <button class="btn btn-primary" onclick="submitEditModal()">저장하기</button>
+      </div>
+    </div>
+
+    <!-- 분석 모달 -->
+    <div id="analysis-modal" class="modal modal-wide" style="display:none">
+      <div class="modal-header">
+        <div>
+          <div id="analysis-modal-title" class="modal-title">비슷한 요건 찾기</div>
+          <div id="analysis-modal-subtitle" class="modal-subtitle"></div>
+        </div>
+        <button class="modal-close" onclick="closeAnalysisModal()">✕</button>
+      </div>
+      <div id="analysis-body" class="modal-body"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeAnalysisModal()">닫기</button>
+      </div>
+    </div>
+
+  </div><!-- /modal-overlay -->
+
+  <!-- ══════════════════════════════════════════════════
+       이탈 확인 얼럿
+  ══════════════════════════════════════════════════ -->
+  <div id="exit-alert" class="alert-overlay">
+    <div class="alert-box">
+      <div class="alert-icon">💭</div>
+      <div class="alert-title">잠깐만요! 저장하지 않은 내용이 있어요.</div>
+      <div class="alert-msg">
+        지금 나가면 변경된 내용이 저장되지 않아요.<br />어떻게 할까요?
+      </div>
+      <div class="alert-actions">
+        <button class="btn btn-secondary btn-lg" onclick="exitWithoutSave()">그냥 나갈게요</button>
+        <button class="btn btn-success btn-lg" onclick="exitWithSave()">저장하고 나갈게요</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 토스트 -->
+  <div id="toast" class="toast"></div>
+
+  <script src="sheets-sync.js"></script>
+  <script src="req-analyzer.js"></script>
+  <script src="app.js"></script>
+  <script>
+    // 오버레이 클릭 시 모달 닫기 (모달 내부 클릭은 무시)
+    function handleOverlayClick(e) {
+      if (e.target.id === 'modal-overlay') {
+        closeEditModal();
+        closeAnalysisModal();
+      }
+    }
+    // 설정 초기화
+    function resetConfig() {
+      if (confirm('설정을 초기화하면 Apps Script URL을 다시 입력해야 해요. 계속할까요?')) {
+        localStorage.removeItem('speclens_script_url');
+        renderConfig();
+        showScreen('config-screen');
+      }
+    }
+  </script>
+</body>
+</html>
