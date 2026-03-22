@@ -17,7 +17,7 @@
   <div id="config-screen" class="screen">
     <div class="config-card">
       <div class="config-logo">SpecLens</div>
-      <div class="config-tagline">쉽고 편리하게 요구사항 검토를 도와드려요</div>
+      <div class="config-tagline">요구사항을 렌즈처럼 선명하게 들여다보세요</div>
 
       <h2>시작하기 전에 설정이 필요해요</h2>
       <p>
@@ -58,7 +58,7 @@
         <div class="header-inner">
           <div class="logo" onclick="loadHome()">
             SpecLens
-            <span>쉽고 편리하게 요구사항 검토를 도와드려요</span>
+            <span>요구사항을 렌즈처럼 선명하게 들여다보세요</span>
           </div>
           <button class="btn btn-ghost btn-sm" onclick="resetConfig()">⚙️ 설정</button>
         </div>
@@ -69,7 +69,7 @@
       <div class="container">
         <div class="home-hero">
           <h1>어떤 모듈을 검토할까요?</h1>
-          <p>모듈을 선택하면 해당 모듈의 요구사항을 우선순위 순으로 보여드려요.</p>
+          <p>모듈별 요구사항을 한곳에 모아 살펴보고, 투표·코멘트로 의견을 나눠보세요.</p>
           <div id="home-stats" class="home-stats"></div>
         </div>
         <div id="module-grid" class="module-grid"></div>
@@ -106,6 +106,9 @@
             <button class="btn btn-secondary" onclick="openAnalysisModal('conflict')">
               ⚡ 충돌 요건 찾기
             </button>
+            <button class="btn btn-secondary" onclick="openEditModal()">
+              + 요구사항 추가
+            </button>
             <button id="btn-save" class="btn btn-primary" onclick="saveRequirements()">
               💾 변경사항 저장
             </button>
@@ -117,27 +120,24 @@
     <!-- 요구사항 목록 -->
     <div class="req-list-wrap">
       <div class="container">
-        <div class="req-list-header">
-          <div style="font-size:.875rem;color:var(--text-sub)">
-            요구사항을 추가·수정·삭제한 뒤 저장하세요.
-          </div>
-          <button class="btn btn-primary" onclick="openEditModal()">
-            + 요구사항 추가
-          </button>
-        </div>
+        <!-- 모듈 요약 카드 -->
+        <div id="module-summary" style="display:none"></div>
+
 
         <table class="req-table">
           <thead>
             <tr>
-              <th style="text-align:center">우선순위</th>
+              <th style="width:28px"></th>
+              <th style="text-align:center;width:60px">우선순위</th>
               <th>요구사항명 / 설명</th>
-              <th>유형</th>
-              <th>영역</th>
-              <th></th>
+              <th style="width:80px">유형</th>
+              <th style="width:130px"></th>
+              <th style="width:110px"></th>
             </tr>
           </thead>
           <tbody id="req-table-body"></tbody>
         </table>
+
       </div>
     </div>
   </div>
@@ -167,6 +167,39 @@
         <div class="form-group">
           <label class="form-label" for="edit-desc">설명</label>
           <textarea id="edit-desc" class="form-textarea" placeholder="요구사항에 대한 상세 설명을 입력해주세요."></textarea>
+        </div>
+
+        <!-- 모듈 변경 -->
+        <div class="form-group">
+          <label class="form-label" for="edit-module">모듈</label>
+          <select id="edit-module" class="form-select"></select>
+          <div style="font-size:.75rem;color:var(--text-muted);margin-top:4px">
+            다른 모듈로 이동하려면 변경 후 저장하세요.
+          </div>
+        </div>
+
+        <!-- 상위 요구사항 그룹 -->
+        <div class="form-group">
+          <label class="form-label" for="edit-parent-group">상위 요구사항 그룹</label>
+          <select id="edit-parent-group" class="form-select" onchange="handleParentGroupChange()">
+            <option value="">없음 (미분류)</option>
+            <!-- 기존 그룹 목록은 JS로 채워짐 -->
+            <option value="__new__">+ 새 그룹 직접 입력</option>
+          </select>
+        </div>
+        <div id="new-group-fields" style="display:none">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="edit-new-group-id">그룹 ID <span class="required">*</span></label>
+              <input id="edit-new-group-id" class="form-input" type="text"
+                     placeholder="예: GRP-001" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="edit-new-group-name">그룹 이름 <span class="required">*</span></label>
+              <input id="edit-new-group-name" class="form-input" type="text"
+                     placeholder="예: 회원 관리" />
+            </div>
+          </div>
         </div>
 
         <div class="form-row">
@@ -199,30 +232,61 @@
           </select>
         </div>
 
-        <div class="form-group">
-          <label class="form-label">연관 채널</label>
-          <div class="checkbox-group">
-            <label class="checkbox-label"><input type="checkbox" id="edit-ch-world" /> T 월드</label>
-            <label class="checkbox-label"><input type="checkbox" id="edit-ch-direct" /> T 다이렉트</label>
-            <label class="checkbox-label"><input type="checkbox" id="edit-ch-space" /> T 우주</label>
-            <label class="checkbox-label"><input type="checkbox" id="edit-ch-members" /> T 멤버십</label>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="edit-author">작성자</label>
+            <input id="edit-author" class="form-input" type="text" placeholder="예: 홍길동" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="edit-assignee">담당자</label>
+            <input id="edit-assignee" class="form-input" type="text" placeholder="예: 김철수" />
           </div>
         </div>
 
         <div class="form-row">
           <div class="form-group">
+            <label class="form-label" for="edit-status">검토 현황</label>
+            <select id="edit-status" class="form-select">
+              <option value="">선택 안 함</option>
+              <option value="검토중">검토중</option>
+              <option value="확정">확정</option>
+              <option value="보류">보류</option>
+              <option value="삭제예정">삭제예정</option>
+            </select>
+          </div>
+          <div class="form-group">
             <label class="form-label" for="edit-source">출처</label>
             <input id="edit-source" class="form-input" type="text" placeholder="예: 초기 분석" />
           </div>
-          <div class="form-group">
-            <label class="form-label" for="edit-author">작성자</label>
-            <input id="edit-author" class="form-input" type="text" placeholder="예: 홍길동" />
-          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="edit-note">비고</label>
+          <input id="edit-note" class="form-input" type="text" placeholder="추가 메모" />
         </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeEditModal()">취소</button>
         <button class="btn btn-primary" onclick="submitEditModal()">저장하기</button>
+      </div>
+    </div>
+
+    <!-- 코멘트 모달 -->
+    <div id="comment-modal" class="modal" style="display:none">
+      <div class="modal-header">
+        <div>
+          <div id="comment-modal-title" class="modal-title">코멘트</div>
+          <div class="modal-subtitle">익명으로 코멘트를 남기고 삭제할 수 있어요.</div>
+        </div>
+        <button class="modal-close" onclick="closeCommentModal()">✕</button>
+      </div>
+      <div id="comment-list" class="modal-body"></div>
+      <div class="modal-footer comment-footer">
+        <textarea id="comment-input" class="form-textarea"
+                  placeholder="코멘트를 입력해주세요..."
+                  style="flex:1;min-height:60px;resize:none;margin:0"
+                  onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)) submitComment()"></textarea>
+        <button class="btn btn-primary" onclick="submitComment()">등록</button>
       </div>
     </div>
 
@@ -272,6 +336,7 @@
       if (e.target.id === 'modal-overlay') {
         closeEditModal();
         closeAnalysisModal();
+        closeCommentModal();
       }
     }
     // 설정 초기화

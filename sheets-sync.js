@@ -57,5 +57,30 @@ const SheetsSync = (() => {
     /** 특정 모듈의 요구사항을 시트에 저장합니다 */
     saveRequirements: (module, requirements) =>
       post({ action: 'save', module, requirements }),
+
+    /** Gemini로 모듈 요약을 생성합니다 */
+    getModuleSummary: (module) => get({ action: 'getModuleSummary', module }),
+
+    /** Gemini로 요구사항 분석 (type: 'duplicate' | 'conflict') */
+    analyze: (requirements, type) => post({ action: 'analyze', requirements, type }),
+
+    /** 전체 투표 현황을 가져옵니다 */
+    getVotes: () => get({ action: 'getVotes' }),
+
+    /** 투표를 제출합니다 (upDelta/downDelta: +1 or -1) */
+    submitVote: (reqId, reqName, upDelta, downDelta) =>
+      post({ action: 'vote', reqId, reqName, upDelta, downDelta }),
+
+    /** 모든 요구사항의 코멘트 수를 가져옵니다 */
+    getCommentCounts: () => get({ action: 'getCommentCounts' }),
+
+    /** 특정 요구사항의 코멘트 목록을 가져옵니다 */
+    getComments: (reqId) => get({ action: 'getComments', reqId }),
+
+    /** 코멘트를 추가합니다 */
+    addComment: (reqId, reqName, text) => post({ action: 'addComment', reqId, reqName, text }),
+
+    /** 코멘트를 삭제합니다 */
+    deleteComment: (commentId) => post({ action: 'deleteComment', commentId }),
   };
 })();
